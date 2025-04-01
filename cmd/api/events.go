@@ -9,12 +9,13 @@ import (
 	"github.com/gin-gonic/gin" //Importing the Gin framework for building the web application.
 )
 
+
 // createEvent handles the creation of a new event.
 func (app *application) createEvent(c *gin.Context){
 	// Bind the incoming JSON request body to the Event struct.
 	// If there's an error during binding, respond with a 400 Bad Request status and the error message.
 	var event database.Event
-	if err := c.ShouldBindBodyWithJSON(&event); err != nil {
+	if err := c.ShouldBindJSON(&event); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -34,20 +35,84 @@ func (app *application) createEvent(c *gin.Context){
 
 }
 // getAllEvents retrieves all events from the database and responds with a JSON array of events.
-func (app *application) getAllEvents(c *gin.Context){
+func (app *application) getEventById(c *gin.Context){
 	id, err := strconv.Atoi(c.Param("id")) // Convert the ID parameter from string to int.
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid event ID"})
+		return
 	}
 	event, err := app.models.Events.Get(id)//Retrieve the event from the database using the Get method from the models package.
 
     if event == nil{
-		c.JSON(http.StatusNotExtended, gin.H{"error": "Event not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "Event not found"})
 	}
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve event"})
+		return
 	
 	}
 	c.JSON(http.StatusOK, event)                                                            
+}
+
+func (app *application) getAllEvents(c *gin.Context){
+	event, err := app.models.Events.GetAll() //Retrieve all events from the database using the GetAll method from the models package.
+
+	if err !=nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retreive events"})
+		return
+	}
+	c.JSON(http.StatusOK, event) //Respond with a 200 OK status and the list of events in JSON format.
+}
+
+func (app *application) updateEvent(c *gin.Context) {
+	// Get the event ID from the request URL
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid event ID"})
+		return
+	}
+
+	// Fetch the existing event from the database
+	existingEvent, err := app.models.Events.Get(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve event"})
+		return
+	}
+
+	// If the event does not exist, return 404 Not Found
+	if existingEvent == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Event not found"})
+		return
+	}
+
+	// Bind the incoming JSON to updatedEvent
+	updatedEvent := &database.Event{}
+	if err := c.ShouldBindJSON(updatedEvent); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Ensure the ID in the updatedEvent matches the path parameter
+	updatedEvent.Id = id
+
+	// Update the event in the database
+	if err := app.models.Events.Update(updatedEvent); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update event"})
+		return
+	}
+
+	// Return the updated event
+	c.JSON(http.StatusOK, updatedEvent)
+}
+func (app *application) deleteEvent(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id")) // Convert the ID parameter from string to int.
+	if err!= nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid event ID"})
+
+	}
+	if err := app.models.Events.Delete(id); err != nil{
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete event"})
+	}
+	c.JSON(http.StatusNoContent, nil)
 }

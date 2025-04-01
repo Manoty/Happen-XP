@@ -7,9 +7,9 @@ import (
 	"time"
 )
 // 
-func(app *application)  serve() error {
+func(app *application)  serve() error { //defines a method serve on the application struct. This method starts an HTTP server and listens for incoming requests.
 	server := &http.Server{
-		Addr: fmt.Sprintf(":&d", app.port),
+		Addr: fmt.Sprintf(":%d", app.port),
 		Handler: app.routes(),
 		IdleTimeout: time.Minute,
 		ReadTimeout: 10 * time.Second,
