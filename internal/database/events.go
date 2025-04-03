@@ -1,9 +1,14 @@
 package database
 
 import (
-	"database/sql"
-	"time"
 	"context"
+	"database/sql"
+	"net/http"
+	"strconv"
+	"time"
+
+	"github.com/Manoty/Happen-XP/internal/database"
+	"github.com/gin-gonic/gin"
 )
 
 // AttendeeModel struct represents the model for attendees in the database.
@@ -102,3 +107,103 @@ func (m *EventModel) Delete(id int) error {
 	}
 	return nil
 }
+func (app *application)addAttendeesToEvent(c *gin.Context){
+	eventId, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "	Invalid event Id"})
+		return
+	} 
+
+	userId, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "	Invalid user Id"})
+		return
+	}
+	event, err := app.models.Events.Get(eventId)
+	if err := nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve event"})
+		return
+	}
+	if event == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Event not found"})
+	}
+	userToAdd, err := app.models.Users.Get(userId)
+	if err := nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve User"})
+		return
+	}
+	if userToAdd == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+	}
+	existingAttendee, err := app.models.attendees.GetByEventAndAttendee(eventId, userToAdd)
+	if err := nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve attendee"})
+		return
+	}
+	if existingAttendee == nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "attendee already exists"})
+		return
+	}
+	attendee := database.Attendee{
+		EventId: event.Id, 
+		userId: userToAdd.Id,
+	}
+
+	_err = app.models.Attendees.insert(&attendee)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add attendee"})
+		return
+	}
+	c.JSON(http.StatusCreated, attendee)
+
+}
+func (app *application) getAttendeesForEvent (c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid event Id"})
+		return
+
+	}
+	users, err := app.models.Attendeer.GetAttendeesByEvent(id)
+	if err := nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to retrieve event attendee"})
+		return
+	}
+	c.JSON(http.StatusOK, users)
+
+}
+func (app *application) deleteAttendeeFromEvent (c *gin.Context ){
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid event Id"})
+		return 
+
+	}
+	userId, err := strconv.Atoi(c.Param("userId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user Id"})
+		return
+
+	}
+	err := app.models.Attendees.Delete(userId, id )
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete attendee "})
+		return
+	}
+	c.JSON(http.StatusNoContent, nil)
+	
+}
+func (app *application) getEventByAttendee(c *gin.Context){
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid attendee id"})
+		return
+	}
+	event, err := app.models.Events.GetByAttendee(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get event"})
+		return
+	}
+	c.JSON(http.StatusOk, events)
+}
+

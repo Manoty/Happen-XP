@@ -116,3 +116,50 @@ func (app *application) deleteEvent(c *gin.Context) {
 	}
 	c.JSON(http.StatusNoContent, nil)
 }
+func (app *qpplication) addAttendeeToEvent(c *gin.Context) {
+	eventId, err :- strconv.Atoi(c.Param("id")) // Convert the event ID parameter from string to int.
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid event ID"})
+		return
+	}
+	userId, err :- strconv.Atoi(c.Param("userid")) // Convert the event ID parameter from string to int.
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid User ID"})
+		return
+	}
+	event err := app.models.Events.Get(eventId)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error":  "Failed to retrieve event"})
+	}
+	if event == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Event not found"})
+	}
+	userToAdd, err := app.models.Users.Get(userId)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve User"})
+		return
+	}
+	if userToAdd == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+	}
+	//make sure user is not already an attendee
+	existingAttendee, err := app.models.Attendees.GetByEventAndUser(event.Id, userToAdd.Id)
+	if existingAttendee  != nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "attendee already exists"})
+		return
+	}
+	//create the attendee
+	attendee := database.Attendee{
+		EventId: event.Id,
+		UserId: userToAdd.Id,
+	}
+	_, err = app.models.Attendees.Insert(&attendee)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add attendee"})
+		return
+	}
+	c.JSON(http.StatusCreated, attendee) // Respond with a 201 Created status and the created attendee.
+}
+func (app *application) getAttendeesForEvent(c *gin.Context){
+	
+}

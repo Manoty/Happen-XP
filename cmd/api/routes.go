@@ -19,7 +19,13 @@ func (app *application) routes() http.Handler{
 		v1.PUT("/events/:id", app.updateEvent)
 		v1.DELETE("/events/:id", app.deleteEvent)
 
+		v1.POST("/events/:id/attendees/:userId", app.addAttendeeToEvent)
+		v1.GET("/events/:id/attendees", app.getAttendeesForEvent)
 
+		v1.DELETE("/events/:id/attendees/:userId", app.deleteAttendeeFromEvent) // Endpoint to delete attendees from event)
+		v1.GET("/attendees/:id/events", app.getEventByAttendee)
+
+		
 		v1.POST("/auth/register", app.registerUser) // Endpoint to register a new user
 
 
